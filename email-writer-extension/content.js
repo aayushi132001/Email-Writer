@@ -1,52 +1,57 @@
 console.log("Email Writer Extension - Content Script Loaded");
 
-function createAIButton(){
-    const button=document.createElement('div');
-    button.className='T-I J-J5-Ji aoO v7 T-I-atl L3';
-    button.style.marginRight='8px';
-    button.innerHTML='AI Reply';
-    button.setAttribute('role','button');
-    button.setAttribute('data-tooltip','Generate AI Reply');
+// ✅ Change this URL to your deployed backend (e.g., https://your-app.onrender.com)
+// const API_URL = 'http://localhost:8080';
+const API_URL = 'https://email-writer-nykt.onrender.com';
+
+
+function createAIButton() {
+    const button = document.createElement('div');
+    button.className = 'T-I J-J5-Ji aoO v7 T-I-atl L3';
+    button.style.marginRight = '8px';
+    button.innerHTML = 'AI Reply';
+    button.setAttribute('role', 'button');
+    button.setAttribute('data-tooltip', 'Generate AI Reply');
     return button;
 }
-function getEmailContent(){
+function getEmailContent() {
     const selectors = [
         '.h7',
         '.a3s.aiL',
         '.gmail_quote',
         '[role="presentation"]'
     ];
-    for(const selector of selectors){
-        const content=document.querySelector(selector);
-        if(content){
+    for (const selector of selectors) {
+        const content = document.querySelector(selector);
+        if (content) {
             return content.innerText.trim();
         }
         return '';
     }
 }
 
-function findComposeToolbar(){
+function findComposeToolbar() {
     const selectors = [
         '.btC',
         '.aDh',
         '[role="toolbar"]',
         '.gU.Up'
     ];
-    for(const selector of selectors){
-        const toolbar=document.querySelector(selector);
-        if(toolbar){
+    for (const selector of selectors) {
+        const toolbar = document.querySelector(selector);
+        if (toolbar) {
             return toolbar;
         }
         return null;
     }
 }
 
-function injectButton(){
+function injectButton() {
     const existingButton = document.querySelector('.ai-reply-button');
-    if(existingButton) existingButton.remove();
+    if (existingButton) existingButton.remove();
 
-    const toolbar=findComposeToolbar();
-    if(!toolbar){
+    const toolbar = findComposeToolbar();
+    if (!toolbar) {
         console.log("Toolbar not found");
         return;
     }
@@ -54,66 +59,67 @@ function injectButton(){
     const button = createAIButton();
     button.classList.add('ai-reply-button');
 
+
     button.addEventListener('click', async () => {
-        try{
+        try {
             button.innerHTML = 'Generating...';
             button.disabled = true;
 
-            const emailContent = getEmailContent(); 
-            const response = await fetch('http://localhost:8080/api/email/generate' ,{
-                method : 'POST',
-                headers : {
-                    'Content-Type' : 'application/json',
+            const emailContent = getEmailContent();
+            const response = await fetch(`${API_URL}/api/email/generate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                 },
-                body : JSON.stringify({
-                    
-                    emailContent : emailContent,
-                    tone: "professional" 
+                body: JSON.stringify({
+
+                    emailContent: emailContent,
+                    tone: "professional"
                 })
-            }); 
-            if(!response.ok){
+            });
+            if (!response.ok) {
                 throw new Error('API request failed');
-            }   
+            }
 
             const generatedReply = await response.text();
             const composeBox = document.querySelector('[role="textbox"][g_editable="true"]');
 
-            if(composeBox){
+            if (composeBox) {
                 composeBox.focus();
-                document.execCommand('insertText',false,generatedReply);
-            }else{
+                document.execCommand('insertText', false, generatedReply);
+            } else {
                 console.error('compose box not found');
             }
 
-        } catch (error){
+        } catch (error) {
             console.error(error);
             alert('failed to generate reply');
-        }finally{
-            button.innerHTML='AI Reply';
+        } finally {
+            button.innerHTML = 'AI Reply';
             button.disabled = false;
         }
-        
+
     });
-    toolbar.insertBefore(button,toolbar.firstChild);
+    toolbar.insertBefore(button, toolbar.firstChild);
 
 }
 
-const observer = new MutationObserver((mutations) => { 
-    for(const mutation of mutations){
+const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
         const addedNodes = Array.from(mutation.addedNodes);
-        const hasComposeElements=addedNodes.some(node =>
-            node.nodeType === Node.ELEMENT_NODE && 
+        const hasComposeElements = addedNodes.some(node =>
+            node.nodeType === Node.ELEMENT_NODE &&
             (node.matches('.aDh, .btC, [role="dialog"]') || node.querySelector('.aDh, .btC, [role="dialog"]'))
         );
 
-        if(hasComposeElements){
+        if (hasComposeElements) {
             console.log("compose Window Detected");
-            setTimeout(injectButton,500);
+            setTimeout(injectButton, 500);
         }
     }
 });
 
-observer.observe(document.body,{
+observer.observe(document.body, {
     childList: true,
     subtree: true
 });
