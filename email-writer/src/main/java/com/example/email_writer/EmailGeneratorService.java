@@ -41,9 +41,11 @@ public class EmailGeneratorService {
                 }
         );
 
+        // Construct the proper API URL with key as query parameter
+        String fullUrl = geminiApiUrl + "?key=" + geminiApiKey;
 
         String response=webClient.post()
-                .uri(geminiApiUrl+geminiApiKey)
+                .uri(fullUrl)
                 .header("Content-Type","application/json")
                 .bodyValue(requestBody)
                 .retrieve()
